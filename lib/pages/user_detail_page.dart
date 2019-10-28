@@ -3,8 +3,9 @@ import 'package:flutter_crud/infrastructure/sqflite_user_repository.dart';
 import 'package:flutter_crud/infrastructure/database_migration.dart';
 import 'package:flutter_crud/model/user.dart';
 
-SqfliteUserRepository userRepository = SqfliteUserRepository(DatabaseMigration.get);
-final List<String> choices = const <String> [
+SqfliteUserRepository userRepository =
+    SqfliteUserRepository(DatabaseMigration.get);
+final List<String> choices = const <String>[
   'Save User & Back',
   'Delete User',
   'Back to List'
@@ -23,79 +24,47 @@ class UserDetailPage extends StatefulWidget {
 }
 
 class UserDetailPageState extends State<UserDetailPage> {
+  final _formKey = GlobalKey<FormState>();
   User user;
   UserDetailPageState(this.user);
-  final semesterList = [1, 2, 3, 4];
-  final creditList = [3, 4, 6, 8, 10];
-  int semester = 1;
-  int credits = 4;
-  TextEditingController nameController = TextEditingController();
-  TextEditingController emailController = TextEditingController();
-
   @override
   Widget build(BuildContext context) {
-    nameController.text = this.user.name;
-    emailController.text = user.email;
     TextStyle textStyle = Theme.of(context).textTheme.title;
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text(user.name),
-        actions: <Widget>[
-          PopupMenuButton<String>(
-            onSelected: select,
-            itemBuilder: (BuildContext context) {
-              return choices.map((String choice){
-                return PopupMenuItem<String>(
-                  value: choice,
-                  child: Text(choice),
-                );
-              }).toList();
-            },
-          ),
-        ],
-      ),
-      body: Padding( 
-        padding: EdgeInsets.only(top:35.0, left: 10.0, right: 10.0),
-        child: ListView(children: <Widget>[Column(
-        children: <Widget>[
-          TextField(
-            controller: nameController,
-            style: textStyle,
-            onChanged: (value) => this.updateName(),
-            decoration: InputDecoration(
-              labelText: "Name",
-              labelStyle: textStyle,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5.0),
-              )
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: Text(this.user.name),
+          actions: <Widget>[
+            PopupMenuButton<String>(
+              onSelected: select,
+              itemBuilder: (BuildContext context) {
+                return choices.map((String choice) {
+                  return PopupMenuItem<String>(
+                    value: choice,
+                    child: Text(choice),
+                  );
+                }).toList();
+              },
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(top:15.0, bottom: 15.0),
-            child: TextField(
-            controller: emailController,
-            style: textStyle,
-            onChanged: (value) => this.updateEmail(),
-            decoration: InputDecoration(
-              labelText: "Email",
-              labelStyle: textStyle,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5.0),
-              )
-            ),
-          ))
-        ],
-      )],)
-      )
-    );
+          ],
+        ),
+        body: Padding(
+            padding: EdgeInsets.only(top: 35.0, left: 10.0, right: 10.0),
+            child: Form(
+                key: _formKey,
+                child: Column(
+                  children: <Widget>[
+                    _showNameInput(textStyle, this.user.name),
+                    _showEmailInput(textStyle, this.user.email)
+                  ],
+                ))));
   }
 
-  void select (String value) async {
+  void select(String value) async {
     int result;
     switch (value) {
       case mnuSave:
-        save();
+        submit();
         break;
       case mnuDelete:
         Navigator.pop(context, true);
@@ -108,16 +77,22 @@ class UserDetailPageState extends State<UserDetailPage> {
             title: Text("Delete User"),
             content: Text("The User has been deleted"),
           );
-          showDialog(
-            context: context,
-            builder: (_) => alertDialog);
-          
+          showDialog(context: context, builder: (_) => alertDialog);
         }
         break;
-        case mnuBack:
-          Navigator.pop(context, true);
-          break;
+      case mnuBack:
+        Navigator.pop(context, true);
+        break;
       default:
+    }
+  }
+
+  void submit() {
+    final form = _formKey.currentState;
+
+    if (form.validate()) {
+      form.save();
+      save();
     }
   }
 
@@ -125,19 +100,44 @@ class UserDetailPageState extends State<UserDetailPage> {
     if (user.id != null) {
       debugPrint('update');
       userRepository.update(user);
-    }
-    else {
+    } else {
       debugPrint('insert');
       userRepository.insert(user);
     }
     Navigator.pop(context, true);
   }
 
-  void updateName(){
-    user.name = nameController.text;
+  Widget _showEmailInput(TextStyle textStyle, String initialValue) {
+    return Padding(
+        padding: EdgeInsets.only(top: 15.0, bottom: 15.0),
+        child: TextFormField(
+          style: textStyle,
+          initialValue: initialValue,
+          onSaved: (val) => user.email = val,
+          validator: (val) => !val.contains('@') ? 'Invalid Email' : null,
+          decoration: InputDecoration(
+              labelText: "Email",
+              labelStyle: textStyle,
+              hintText: 'Enter a valid email',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5.0),
+              )),
+        ));
   }
 
-  void updateEmail() {
-    user.email = emailController.text;
+  Widget _showNameInput(TextStyle textStyle, String initialValue) {
+    return TextFormField(
+      style: textStyle,
+      initialValue: initialValue,
+      onSaved: (val) => user.name = val,
+      validator: (val) => val.length < 1 ? 'Username too short' : null,
+      decoration: InputDecoration(
+          labelText: "Name",
+          labelStyle: textStyle,
+          hintText: 'Enter name, min length 1',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5.0),
+          )),
+    );
   }
 }
